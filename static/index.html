@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infant Pose Proxy - Body Part Segmentation</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --danger: #dc2626;
+            --success: #16a34a;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        .disclaimer {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            text-align: center;
+        }
+
+        .disclaimer-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .disclaimer-text {
+            color: #92400e;
+            font-weight: 500;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 0;
+        }
+
+        .tab-btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            color: var(--primary);
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary);
+            background: #f1f5f9;
+        }
+
+        .upload-area.dragover {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .upload-text {
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-hint {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-name {
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            background: #f1f5f9;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--primary-hover);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .result-card {
+            background: #f8fafc;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .result-card img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .result-label {
+            padding: 0.75rem;
+            font-weight: 500;
+            text-align: center;
+            background: white;
+            border-top: 1px solid var(--border);
+        }
+
+        .stats {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            font-weight: 600;
+            background: #f8fafc;
+        }
+
+        .color-swatch {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            margin-right: 0.5rem;
+            vertical-align: middle;
+        }
+
+        .loading {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 2rem;
+            color: var(--text-muted);
+        }
+
+        .loading.show {
+            display: flex;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #b91c1c;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .tabs {
+                flex-direction: column;
+            }
+
+            .tab-btn {
+                border-bottom: none;
+                border-left: 2px solid transparent;
+                text-align: left;
+            }
+
+            .tab-btn.active {
+                border-left-color: var(--primary);
+            }
+
+            .stats {
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🍼 Infant Pose Proxy</h1>
+            <p class="subtitle">Body Part Segmentation from Images & Videos</p>
+        </header>
+
+        <div class="disclaimer">
+            <div class="disclaimer-icon">⚠️</div>
+            <div class="disclaimer-text">
+                <strong>Research/Educational Demo Only</strong><br>
+                This tool is NOT intended for medical diagnosis, clinical use, or any form of medical advice.
+                Results should not be used to make health-related decisions.
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="image">📷 Image Analysis</button>
+            <button class="tab-btn" data-tab="video">🎬 Video Analysis</button>
+        </div>
+
+        <!-- Image Analysis Tab -->
+        <div id="image-tab" class="tab-content active">
+            <div class="card">
+                <div class="upload-area" id="image-upload-area">
+                    <div class="upload-icon">📷</div>
+                    <div class="upload-text">Drop an image here or click to browse</div>
+                    <div class="upload-hint">Supports JPG, PNG (max 25MB)</div>
+                    <input type="file" id="image-input" accept="image/*">
+                    <div class="file-name" id="image-file-name" style="display: none;"></div>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" id="analyze-image-btn" disabled>
+                        🔍 Analyze Image
+                    </button>
+                </div>
+            </div>
+
+            <div class="loading" id="image-loading">
+                <div class="spinner"></div>
+                <span>Analyzing image...</span>
+            </div>
+
+            <div class="error" id="image-error"></div>
+
+            <div class="results" id="image-results">
+                <div class="card">
+                    <h3>Results</h3>
+                    <div class="stats" id="image-stats"></div>
+                    <div class="results-grid">
+                        <div class="result-card">
+                            <img id="overlay-img" src="" alt="Overlay">
+                            <div class="result-label">Segmentation Overlay</div>
+                        </div>
+                        <div class="result-card">
+                            <img id="mask-img" src="" alt="Mask">
+                            <div class="result-label">Body Part Mask</div>
+                        </div>
+                    </div>
+                    <h4>Detected Body Parts</h4>
+                    <table id="detections-table">
+                        <thead>
+                            <tr>
+                                <th>Body Part</th>
+                                <th>Bounding Box</th>
+                                <th>Centroid</th>
+                                <th>Area (px)</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Video Analysis Tab -->
+        <div id="video-tab" class="tab-content">
+            <div class="card">
+                <div class="upload-area" id="video-upload-area">
+                    <div class="upload-icon">🎬</div>
+                    <div class="upload-text">Drop a video here or click to browse</div>
+                    <div class="upload-hint">Supports MP4, AVI, MOV (max 25MB)</div>
+                    <input type="file" id="video-input" accept="video/*">
+                    <div class="file-name" id="video-file-name" style="display: none;"></div>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" id="analyze-video-btn" disabled>
+                        🔍 Analyze Video
+                    </button>
+                </div>
+            </div>
+
+            <div class="loading" id="video-loading">
+                <div class="spinner"></div>
+                <span>Analyzing video (this may take a moment)...</span>
+            </div>
+
+            <div class="error" id="video-error"></div>
+
+            <div class="results" id="video-results">
+                <div class="card">
+                    <h3>Results</h3>
+                    <div class="stats" id="video-stats"></div>
+                    <div class="results-grid">
+                        <div class="result-card">
+                            <img id="first-overlay-img" src="" alt="First Frame Overlay">
+                            <div class="result-label">First Frame Segmentation</div>
+                        </div>
+                    </div>
+                    <h4>Body Part Tracking Summary</h4>
+                    <table id="tracks-table">
+                        <thead>
+                            <tr>
+                                <th>Body Part</th>
+                                <th>Track Points</th>
+                                <th>Total Movement (px)</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>
+                Based on the <a href="https://arxiv.org/abs/2210.08054" target="_blank">Youtube-Infant-Body-Parsing Dataset</a>
+            </p>
+            <p style="margin-top: 0.5rem;">
+                ⚠️ For research and educational purposes only. Not medical advice.
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        // Class colors matching the backend
+        const CLASS_COLORS = {
+            1: '#2ca02c',  // head - green
+            2: '#1f77b4',  // hand/arm - blue
+            3: '#ff7f0e',  // body/torso - orange
+            4: '#d62728',  // foot/leg - red
+        };
+
+        const CLASS_NAMES = {
+            1: 'Head',
+            2: 'Hand/Arm',
+            3: 'Body/Torso',
+            4: 'Foot/Leg'
+        };
+
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(`${btn.dataset.tab}-tab`).classList.add('active');
+            });
+        });
+
+        // File upload handling
+        function setupUpload(uploadAreaId, inputId, fileNameId, analyzeBtn) {
+            const uploadArea = document.getElementById(uploadAreaId);
+            const input = document.getElementById(inputId);
+            const fileName = document.getElementById(fileNameId);
+            const btn = document.getElementById(analyzeBtn);
+
+            uploadArea.addEventListener('click', () => input.click());
+
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                if (e.dataTransfer.files.length) {
+                    input.files = e.dataTransfer.files;
+                    updateFileName();
+                }
+            });
+
+            input.addEventListener('change', updateFileName);
+
+            function updateFileName() {
+                if (input.files.length) {
+                    fileName.textContent = input.files[0].name;
+                    fileName.style.display = 'block';
+                    btn.disabled = false;
+                } else {
+                    fileName.style.display = 'none';
+                    btn.disabled = true;
+                }
+            }
+        }
+
+        setupUpload('image-upload-area', 'image-input', 'image-file-name', 'analyze-image-btn');
+        setupUpload('video-upload-area', 'video-input', 'video-file-name', 'analyze-video-btn');
+
+        // Image analysis
+        document.getElementById('analyze-image-btn').addEventListener('click', async () => {
+            const input = document.getElementById('image-input');
+            if (!input.files.length) return;
+
+            const loading = document.getElementById('image-loading');
+            const error = document.getElementById('image-error');
+            const results = document.getElementById('image-results');
+
+            loading.classList.add('show');
+            error.classList.remove('show');
+            results.classList.remove('show');
+
+            const formData = new FormData();
+            formData.append('file', input.files[0]);
+
+            try {
+                const response = await fetch('/analyze_image', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.detail || 'Analysis failed');
+                }
+
+                const data = await response.json();
+                displayImageResults(data);
+            } catch (err) {
+                error.textContent = `Error: ${err.message}`;
+                error.classList.add('show');
+            } finally {
+                loading.classList.remove('show');
+            }
+        });
+
+        function displayImageResults(data) {
+            // Stats
+            const stats = document.getElementById('image-stats');
+            stats.innerHTML = `
+                <div class="stat">
+                    <div class="stat-value">${data.runtime_ms.toFixed(1)}ms</div>
+                    <div class="stat-label">Processing Time</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">${data.detections.length}</div>
+                    <div class="stat-label">Body Parts Detected</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">${data.image_size}px</div>
+                    <div class="stat-label">Output Size</div>
+                </div>
+            `;
+
+            // Images
+            document.getElementById('overlay-img').src = `data:image/png;base64,${data.overlay_png_base64}`;
+            document.getElementById('mask-img').src = `data:image/png;base64,${data.mask_png_base64}`;
+
+            // Detections table
+            const tbody = document.querySelector('#detections-table tbody');
+            tbody.innerHTML = '';
+
+            data.detections.forEach(det => {
+                const row = document.createElement('tr');
+                const color = CLASS_COLORS[det.class_id] || '#888';
+                const box = det.box ? `(${det.box.xmin}, ${det.box.ymin}) - (${det.box.xmax}, ${det.box.ymax})` : 'N/A';
+                const centroid = det.keypoint ? `(${det.keypoint.cx.toFixed(1)}, ${det.keypoint.cy.toFixed(1)})` : 'N/A';
+
+                row.innerHTML = `
+                    <td><span class="color-swatch" style="background: ${color}"></span>${det.class_name}</td>
+                    <td>${box}</td>
+                    <td>${centroid}</td>
+                    <td>${det.area_px.toLocaleString()}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            document.getElementById('image-results').classList.add('show');
+        }
+
+        // Video analysis
+        document.getElementById('analyze-video-btn').addEventListener('click', async () => {
+            const input = document.getElementById('video-input');
+            if (!input.files.length) return;
+
+            const loading = document.getElementById('video-loading');
+            const error = document.getElementById('video-error');
+            const results = document.getElementById('video-results');
+
+            loading.classList.add('show');
+            error.classList.remove('show');
+            results.classList.remove('show');
+
+            const formData = new FormData();
+            formData.append('file', input.files[0]);
+
+            try {
+                const response = await fetch('/analyze_video', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.detail || 'Analysis failed');
+                }
+
+                const data = await response.json();
+                displayVideoResults(data);
+            } catch (err) {
+                error.textContent = `Error: ${err.message}`;
+                error.classList.add('show');
+            } finally {
+                loading.classList.remove('show');
+            }
+        });
+
+        function displayVideoResults(data) {
+            // Stats
+            const stats = document.getElementById('video-stats');
+            stats.innerHTML = `
+                <div class="stat">
+                    <div class="stat-value">${(data.runtime_ms_total / 1000).toFixed(2)}s</div>
+                    <div class="stat-label">Total Processing Time</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">${data.sampled_frames}</div>
+                    <div class="stat-label">Frames Analyzed</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">${data.image_size}px</div>
+                    <div class="stat-label">Output Size</div>
+                </div>
+            `;
+
+            // First frame overlay
+            document.getElementById('first-overlay-img').src = `data:image/png;base64,${data.first_overlay_png_base64}`;
+
+            // Tracks table
+            const tbody = document.querySelector('#tracks-table tbody');
+            tbody.innerHTML = '';
+
+            for (let classId = 1; classId < data.num_classes; classId++) {
+                const track = data.tracks[classId.toString()] || [];
+                const movement = computeTotalMovement(track);
+                const color = CLASS_COLORS[classId] || '#888';
+                const name = CLASS_NAMES[classId] || `Class ${classId}`;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><span class="color-swatch" style="background: ${color}"></span>${name}</td>
+                    <td>${track.length}</td>
+                    <td>${movement.toFixed(1)}</td>
+                `;
+                tbody.appendChild(row);
+            }
+
+            document.getElementById('video-results').classList.add('show');
+        }
+
+        function computeTotalMovement(track) {
+            if (track.length < 2) return 0;
+            
+            let total = 0;
+            for (let i = 1; i < track.length; i++) {
+                const [t1, x1, y1] = track[i - 1];
+                const [t2, x2, y2] = track[i];
+                const dist = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+                total += dist;
+            }
+            return total;
+        }
+
+        // Check health on load
+        async function checkHealth() {
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                if (!data.model_loaded) {
+                    console.warn('Model not loaded:', data.message);
+                }
+            } catch (err) {
+                console.error('Health check failed:', err);
+            }
+        }
+
+        checkHealth();
+    </script>
+</body>
+</html>
